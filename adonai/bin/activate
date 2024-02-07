@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/home/phary/Documents/web development/Adonai-shop/adonai"
+VIRTUAL_ENV="/home/stevephary/Documents/Projects/Web/Adonai-shop/adonai"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

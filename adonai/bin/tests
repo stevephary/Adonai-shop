@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/home/phary/Documents/web development/Adonai-shop/adonai/bin/python3" "$0" "$@"
-' '''
+#!/home/stevephary/Documents/Projects/Web/Adonai-shop/adonai/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
