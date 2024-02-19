@@ -58,7 +58,7 @@ def init_connection():
 supabase = init_connection()
 
 def run_query():
-    return supabase.table("productpurchases").select("productname, quantity, unitprice, totalamount, record_date ").execute()
+    return supabase.table("productpurchases").select("productname, quantity, unitprice, totalamount, record_date, sales_price").execute()
 
 def display_data(rows):
     table_placeholder = st.empty()
