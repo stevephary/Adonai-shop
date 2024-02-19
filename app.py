@@ -68,7 +68,8 @@ def display_data(rows):
     'quantity': 'Idadi',
     'unitprice': 'Bei ya Kila Bidhaa',
     'totalamount': 'Jumla ya Bei ',
-    'record_date': 'Tarehe ya Ununuzi'
+    'record_date': 'Tarehe ya Ununuzi',
+    'sales_price': 'Bei ya Kuuza'
     # Add more columns here if needed
     })
     df_sorted = df.sort_values(by="Tarehe ya Ununuzi", ascending=False)
