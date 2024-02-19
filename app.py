@@ -4,9 +4,6 @@ import hmac
 from supabase import create_client
 import datetime
 
-
-
-
 def check_password():
     """Returns `True` if the user had a correct password."""
 
@@ -42,91 +39,115 @@ def check_password():
     return False
 
 
-if not check_password():
-    st.stop()
+def page_display_products():
+    st.title("Manunuzi Ya Bidhaa")
 
+    @st.cache_resource
+    def init_connection():
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
 
-# Initialize connection.
-st.title("Manunuzi ya Bidhaa")
+    supabase = init_connection()
 
-@st.cache_resource
-def init_connection():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+    def run_query():
+        return supabase.table("productpurchases").select("productname, quantity, unitprice, totalamount, record_date, sales_price").execute()
 
-supabase = init_connection()
+    def display_data(rows):
+        df = pd.DataFrame(rows.data)
+        df = df.rename(columns={
+        'productname': 'Jina la Bidhaa',
+        'quantity': 'Idadi',
+        'unitprice': 'Bei ya Kila Bidhaa',
+        'totalamount': 'Jumla ya Bei ',
+        'record_date': 'Tarehe ya Ununuzi',
+        'sales_price': 'Bei ya Kuuza Bidhaa',
+        # Add more columns here if needed
+        })
+        df_sorted = df.sort_values(by="Tarehe ya Ununuzi", ascending=False)
+        df_sorted.index = range(1, len(df_sorted) + 1)  # Resetting the index to start from 1
+        st.table(df_sorted)
 
-def run_query():
-    return supabase.table("productpurchases").select("productname, quantity, unitprice, totalamount, record_date, sales_price").execute()
+    rows = run_query()
+    display_data(rows)
 
-def display_data(rows):
-    table_placeholder = st.empty()
-    df = pd.DataFrame(rows.data)
-    df = df.rename(columns={
-    'productname': 'Jina la Bidhaa',
-    'quantity': 'Idadi',
-    'unitprice': 'Bei ya Kila Bidhaa',
-    'totalamount': 'Jumla ya Bei ',
-    'record_date': 'Tarehe ya Ununuzi',
-    'sales_price': 'Bei ya Kuuza'
-    # Add more columns here if needed
-    })
-    df_sorted = df.sort_values(by="Tarehe ya Ununuzi", ascending=False)
-    df_sorted.index = range(1, len(df_sorted) + 1)  # Resetting the index to start from 1
-    table_placeholder.table(df_sorted)
+def page_add_product():
+    st.title("Ongeza Bidhaa")
 
+    @st.cache_resource
+    def init_connection():
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
 
+    supabase = init_connection()
 
-def add_new_purchase(form_placeholder):
-    with form_placeholder:
-        with st.form(key="add_purchase_form"):
-            product_name = st.text_input("Jina la Bidhaa", key="product_name")
-            purchase_date = st.date_input("Tarehe ya Ununuzi", value=datetime.date.today(), key="purchase_date")
-            quantity = st.number_input("Idadi", min_value=1, key="quantity")
-            totalamount = st.number_input("Jumla ya Bei", min_value=1.00, key="totalamount")
-            st.form_submit_button("Submit", on_click=lambda: st.session_state.update(submitted=True))
+    def insert_new_product(product_name, quantity, totalamount, purchase_date):
+        supabase.table("productpurchases").insert({
+            "productname": product_name,
+            "quantity": quantity,
+            "unitprice": totalamount / quantity if quantity else 0,
+            "totalamount": totalamount,
+            "record_date": purchase_date.strftime("%Y-%m-%d")
+        }).execute()
 
-def insert_new_purchase():
-    supabase.table("productpurchases").insert({
-        "productname": st.session_state.product_name,
-        "quantity": st.session_state.quantity,
-        "unitprice": st.session_state.totalamount / st.session_state.quantity if st.session_state.quantity else 0,
-        "totalamount": st.session_state.totalamount,
-        "record_date": st.session_state.purchase_date.strftime("%Y-%m-%d")
-    }).execute()
+    with st.form(key="add_product_form"):
+        product_name = st.text_input("Jina la Bidhaa")
+        purchase_date = st.date_input("Tarehe ya Ununuzi", value=datetime.date.today())
+        quantity = st.number_input("Idadi", min_value=1)
+        totalamount = st.number_input("Jumla ya Bei", min_value=1.00)
+        submitted = st.form_submit_button("Ongeza Bidhaa")
 
-def delete_purchase(selected_record_date, selected_product_name):
-    supabase.table("productpurchases").delete().match({"record_date": selected_record_date, "productname": selected_product_name}).execute()
+        if submitted:
+            insert_new_product(product_name, quantity, totalamount, purchase_date)
+            st.success("Bidhaa imeongezwa kwa mafanikio!")
+            st.session_state.runpage = page_display_products  # Set the page to display products
+            # st.experimental_rerun()  # Redirect to display page after adding product
 
-rows = run_query()
+def page_add_selling_price():
+    st.title("Ongeza Bei ya Kuuza")
 
-form_placeholder = st.empty()
-add_button = form_placeholder.button("Ongeza Manunuzi", on_click=lambda: st.session_state.update(submitted=False), key="add_button")
+    @st.cache_resource
+    def init_connection():
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
 
-if add_button:
-    add_new_purchase(form_placeholder)
+    supabase = init_connection()
 
-if st.session_state.get("submitted"):
-    insert_new_purchase()
-    form_placeholder.empty()
-    st.session_state.update(submitted=False)
-    st.rerun()
+    # Get the list of product names from the purchases table
+    def get_product_names():
+        rows = supabase.table("productpurchases").select("productname, record_date").execute()
+        return [f"{row['productname']}  ,   {row['record_date']}" for row in rows.data]
 
-if not add_button:
-    delete_prod = pd.DataFrame(rows.data)[['record_date', 'productname']].drop_duplicates().values.tolist()
-    selected_product = st.selectbox("Chagua Bidhaa", [f"{date}  , {product}" for date, product in delete_prod], key="selected_product")
+    product = get_product_names()
+
+    # Dropdown to select the product
+    selected_product = st.selectbox("Chagua Jina la Bidhaa", product)
 
     if selected_product:
-        selected_record_date, selected_product_name = selected_product.split(",")
-        selected_rows = pd.DataFrame(rows.data)
-        selected_rows = selected_rows[(selected_rows['record_date'] == selected_record_date.strip()) & (selected_rows['productname'] == selected_product_name.strip())]
-        if not selected_rows.empty:
-            st.table(selected_rows)
-            delete_button = st.button("Futa Bidhaa", key="delete_button")
-            if delete_button:
-                delete_purchase(selected_record_date, selected_product_name)
-                st.rerun()
-            st.stop()
+        new_price = st.number_input("Bei ya Kuuza", min_value=0.00)
+        if st.button("Weka Bei ya Kuuza"):
+            supabase.table("productpurchases").update({
+                "sales_price": new_price
+            }).eq("productname" , selected_product).execute()
+            st.success(f"Bei ya Kuuza ya '{selected_product}' imeongezwa kwa mafanikio!")
 
-    display_data(rows)
+ 
+def main():
+    pages = {
+        "Onyesha Bidhaa": page_display_products,
+        "Ongeza Bidhaa": page_add_product,
+        "Ongeza Bei ya Kuuza": page_add_selling_price,
+    }
+
+    st.sidebar.title("ADONAI SHOP")
+    selection = st.sidebar.radio("Go to", list(pages.keys()))
+
+    page = pages[selection]
+    page()
+
+if __name__ == "__main__":
+    if not check_password():
+        st.stop()
+    main()
