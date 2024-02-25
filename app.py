@@ -54,19 +54,23 @@ def page_display_products():
         return supabase.table("productpurchases").select("productname, quantity, unitprice, totalamount, record_date, sales_price").execute()
 
     def display_data(rows):
-        df = pd.DataFrame(rows.data)
-        df = df.rename(columns={
-        'productname': 'Jina la Bidhaa',
-        'quantity': 'Idadi',
-        'unitprice': 'Bei ya Kila Bidhaa',
-        'totalamount': 'Jumla ya Bei ',
-        'record_date': 'Tarehe ya Ununuzi',
-        'sales_price': 'Bei ya Kuuza Bidhaa',
-        # Add more columns here if needed
-        })
-        df_sorted = df.sort_values(by="Tarehe ya Ununuzi", ascending=False)
-        df_sorted.index = range(1, len(df_sorted) + 1)  # Resetting the index to start from 1
-        st.table(df_sorted)
+        if len(rows.data) == 0:
+            st.write("HAKUNA BIDHAA")
+
+        else:
+            df = pd.DataFrame(rows.data)
+            df = df.rename(columns={
+            'productname': 'Jina la Bidhaa',
+            'quantity': 'Idadi',
+            'unitprice': 'Bei ya Kila Bidhaa',
+            'totalamount': 'Jumla ya Bei ',
+            'record_date': 'Tarehe ya Ununuzi',
+            'sales_price': 'Bei ya Kuuza Bidhaa',
+            # Add more columns here if needed
+            })
+            df_sorted = df.sort_values(by="Tarehe ya Ununuzi", ascending=False)
+            df_sorted.index = range(1, len(df_sorted) + 1)  # Resetting the index to start from 1
+            st.table(df_sorted)      
 
     rows = run_query()
     display_data(rows)
@@ -118,7 +122,7 @@ def page_add_selling_price():
     # Get the list of product names from the purchases table
     def get_product_names():
         rows = supabase.table("productpurchases").select("productname, record_date").execute()
-        return [f"{row['productname']}  ,   {row['record_date']}" for row in rows.data]
+        return [f"{row['productname']} ({row['record_date']})" for row in rows.data]
 
     product = get_product_names()
 
@@ -126,12 +130,13 @@ def page_add_selling_price():
     selected_product = st.selectbox("Chagua Jina la Bidhaa", product)
 
     if selected_product:
+        selected_product_name = selected_product.split(' (')[0]
         new_price = st.number_input("Bei ya Kuuza", min_value=0.00)
         if st.button("Weka Bei ya Kuuza"):
             supabase.table("productpurchases").update({
                 "sales_price": new_price
-            }).eq("productname" , selected_product).execute()
-            st.success(f"Bei ya Kuuza ya '{selected_product}' imeongezwa kwa mafanikio!")
+            }).eq("productname" , selected_product_name).execute()
+            st.success(f"Bei ya Kuuza ya '{selected_product_name}' imeongezwa kwa mafanikio!")
 
  
 def main():
